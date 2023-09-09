@@ -21,13 +21,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/hostevents.h>
 #include <loguru.hpp>
+#include <emscripten.h>
 
 EventManager* EventManager::event_manager;
 bool g_swap_command_option = false;
 
 void EventManager::poll_events()
 {
-    // LOG_F(INFO, "EventManager::poll_events()");
+    int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
+    if (!lock) {
+        return;
+    }
+    EM_ASM({ workerApi.releaseInputLock(); });
+
     // perform post-processing
     this->_post_signal.emit();
 }
