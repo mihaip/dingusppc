@@ -31,6 +31,48 @@ void EventManager::poll_events()
     if (!lock) {
         return;
     }
+
+    int mouse_button_state = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButtonStateAddr);
+    });
+    if (mouse_button_state > -1) {
+        MouseEvent me;
+        me.buttons_state = mouse_button_state;
+        me.flags         = MOUSE_EVENT_BUTTON;
+        this->_mouse_signal.emit(me);
+    }
+
+    int has_mouse_position = EM_ASM_INT_V({ return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
+    });
+    if (has_mouse_position) {
+        int delta_x = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaXAddr);
+        });
+        int delta_y = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaYAddr);
+        });
+
+        // Approximate an acceleration curve, otherwise the deltas from JS
+        // are too small.
+        // This is a hack, we should instead add support for the the extended
+        // ADB protocol which allows absolute positioning.
+        int adjusted_delta_x = pow(float(abs(delta_x)), 1.5);
+        if (delta_x < 0) {
+            adjusted_delta_x *= -1;
+        }
+        int adjusted_delta_y = pow(float(abs(delta_y)), 1.5);
+        if (delta_y < 0) {
+            adjusted_delta_y *= -1;
+        }
+
+        MouseEvent me;
+        me.xrel  = int(adjusted_delta_x);
+        me.yrel  = int(adjusted_delta_y);
+        me.flags = MOUSE_EVENT_MOTION;
+        this->_mouse_signal.emit(me);
+    }
+
+
     EM_ASM({ workerApi.releaseInputLock(); });
 
     // perform post-processing
