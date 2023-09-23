@@ -72,7 +72,10 @@ int main(int argc, char** argv) {
     app.allow_windows_style_options(); /* we want Windows-style options */
     app.allow_extras();
 
-    bool   realtime_enabled, debugger_enabled;
+    bool   realtime_enabled = false;
+    bool   debugger_enabled = false;
+    bool   log_to_stderr = false;
+    bool   log_to_stderr_verbose = false;
     string machine_str;
     string bootrom_path("bootrom.bin");
 
@@ -81,6 +84,11 @@ int main(int argc, char** argv) {
 
     app.add_flag("-d,--debugger", debugger_enabled,
         "Enter the built-in debugger");
+
+    app.add_flag("--log-to-stderr", log_to_stderr,
+        "Send internal logging to stderr (instead of dingusppc.log)");
+    app.add_flag("--log-to-stderr-verbose", log_to_stderr_verbose,
+        "Use maximum verbosity when sending logs to stderr");
 
     app.add_option("-b,--bootrom", bootrom_path, "Specifies BootROM path")
         ->check(CLI::ExistingFile);
@@ -118,7 +126,7 @@ int main(int argc, char** argv) {
     if (debugger_enabled) {
         if (realtime_enabled)
             cout << "Both realtime and debugger enabled! Using debugger" << endl;
-        execution_mode = 1;
+        execution_mode = debugger;
     }
 
     /* initialize logging */
@@ -126,12 +134,13 @@ int main(int argc, char** argv) {
     loguru::g_preamble_time    = false;
     loguru::g_preamble_thread  = false;
 
-    if (!execution_mode) {
+    if (execution_mode == interpreter && !log_to_stderr) {
         loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
         loguru::init(argc, argv);
         loguru::add_file("dingusppc.log", loguru::Append, 0);
     } else {
-        loguru::g_stderr_verbosity = loguru::Verbosity_INFO;
+        loguru::g_stderr_verbosity = log_to_stderr_verbose ?
+            loguru::Verbosity_MAX : loguru::Verbosity_INFO;
         loguru::init(argc, argv);
     }
 
