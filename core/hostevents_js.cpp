@@ -52,22 +52,9 @@ void EventManager::poll_events()
             return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaYAddr);
         });
 
-        // Approximate an acceleration curve, otherwise the deltas from JS
-        // are too small.
-        // This is a hack, we should instead add support for the the extended
-        // ADB protocol which allows absolute positioning.
-        int adjusted_delta_x = pow(float(abs(delta_x)), 1.5);
-        if (delta_x < 0) {
-            adjusted_delta_x *= -1;
-        }
-        int adjusted_delta_y = pow(float(abs(delta_y)), 1.5);
-        if (delta_y < 0) {
-            adjusted_delta_y *= -1;
-        }
-
         MouseEvent me;
-        me.xrel  = int(adjusted_delta_x);
-        me.yrel  = int(adjusted_delta_y);
+        me.xrel  = delta_x;
+        me.yrel  = delta_y;
         me.flags = MOUSE_EVENT_MOTION;
         this->_mouse_signal.emit(me);
     }
