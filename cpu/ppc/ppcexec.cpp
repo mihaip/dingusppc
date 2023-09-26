@@ -365,7 +365,14 @@ void force_cycle_counter_reload()
 
 /** Execute PPC code as long as power is on. */
 // inner interpreter loop
-static void ppc_exec_inner()
+static
+// Don't inline this function under Emscripten, otherwise we will end up with
+// very inefficient code generation due to the setjmp call in the parent
+// ppc_exec() function.
+#ifdef EMSCRIPTEN
+__attribute__((noinline))
+#endif
+void ppc_exec_inner()
 {
     uint64_t max_cycles;
     uint32_t page_start, eb_start, eb_end;
