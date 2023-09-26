@@ -298,7 +298,14 @@ typedef enum {
 
 // inner interpreter loop
 template <ppc_exec_type_t exec_type>
-static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
+static
+// Don't inline this function under Emscripten, otherwise we will end up with
+// very inefficient code generation due to the setjmp call in the parent
+// ppc_exec() function.
+#ifdef EMSCRIPTEN
+__attribute__((noinline))
+#endif
+void ppc_exec_inner(uint32_t start_addr, uint32_t size)
 {
     uint64_t max_cycles = 0;
     uint32_t page_start, eb_start, eb_end = 0;
