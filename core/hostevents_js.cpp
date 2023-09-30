@@ -42,7 +42,8 @@ void EventManager::poll_events()
         this->_mouse_signal.emit(me);
     }
 
-    int has_mouse_position = EM_ASM_INT_V({ return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
+    int has_mouse_position = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
     });
     if (has_mouse_position) {
         int delta_x = EM_ASM_INT_V({
@@ -59,6 +60,23 @@ void EventManager::poll_events()
         this->_mouse_signal.emit(me);
     }
 
+    int has_key_event = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.keyEventFlagAddr);
+    });
+    if (has_key_event) {
+        int keycode = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyCodeAddr);
+        });
+
+        int keystate = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyStateAddr);
+        });
+
+        KeyboardEvent ke;
+        ke.key       = keycode;
+        ke.flags     = keystate == 0 ? KEYBOARD_EVENT_UP : KEYBOARD_EVENT_DOWN;
+        this->_keyboard_signal.emit(ke);
+    }
 
     EM_ASM({ workerApi.releaseInputLock(); });
 
