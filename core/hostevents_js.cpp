@@ -26,6 +26,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 EventManager* EventManager::event_manager;
 bool g_swap_command_option = false;
 
+static void post_key_event(const CoreSignal<const KeyboardEvent&> &signal)
+{
+    int has_key_event = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.keyEventFlagAddr);
+    });
+    if (has_key_event) {
+        int keycode = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyCodeAddr);
+        });
+
+        int keystate = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyStateAddr);
+        });
+
+        KeyboardEvent ke;
+        ke.key       = keycode;
+        ke.flags     = keystate == 0 ? KEYBOARD_EVENT_UP : KEYBOARD_EVENT_DOWN;
+        signal.emit(ke);
+    }
+}
+
 void EventManager::poll_events()
 {
     int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
@@ -43,7 +64,8 @@ void EventManager::poll_events()
         this->_mouse_signal.emit(me);
     }
 
-    int has_mouse_position = EM_ASM_INT_V({ return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
+    int has_mouse_position = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
     });
     if (has_mouse_position) {
         int delta_x = EM_ASM_INT_V({
@@ -60,9 +82,24 @@ void EventManager::poll_events()
         this->_mouse_signal.emit(me);
     }
 
+    post_key_event(this->_keyboard_signal);
 
     EM_ASM({ workerApi.releaseInputLock(); });
 
     // perform post-processing
     this->_post_signal.emit();
+}
+
+void EventManager::post_keyboard_state_events()
+{
+    int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
+    if (!lock) {
+        return;
+    }
+    post_key_event(this->_keyboard_signal);
+    EM_ASM({ workerApi.releaseInputLock(); });
+}
+
+void EventManager::set_keyboard_locale(uint32_t keyboard_id) {
+    this->kbd_locale = keyboard_id;
 }
