@@ -10,10 +10,14 @@
 class Display::Impl
 {
 public:
-    std::unique_ptr<uint8_t[]> framebuffer;
-    int framebuffer_size;
-    int framebuffer_pitch;
+    std::unique_ptr<uint8_t[]> frame_buffer;
+    int frame_buffer_size;
+    int frame_buffer_pitch;
     XXH64_hash_t last_update_hash;
+
+    std::unique_ptr<uint8_t[]> cursor_buffer;
+    int cursor_width;
+    int cursor_height;
 };
 
 Display::Display(): impl(std::make_unique<Impl>())
@@ -27,9 +31,9 @@ Display::~Display() {
 
 bool Display::configure(int width, int height)
 {
-    impl->framebuffer_pitch = width * 4;
-    impl->framebuffer_size = height * impl->framebuffer_pitch;
-    impl->framebuffer = std::make_unique<uint8_t[]>(impl->framebuffer_size);
+    impl->frame_buffer_pitch = width * 4;
+    impl->frame_buffer_size = height * impl->frame_buffer_pitch;
+    impl->frame_buffer = std::make_unique<uint8_t[]>(impl->frame_buffer_size);
     impl->last_update_hash = 0;
     EM_ASM_({ workerApi.didOpenVideo($0, $1); }, width, height);
     return true;
@@ -43,31 +47,58 @@ void Display::handle_events(const WindowEvent& wnd_event)
 void Display::blank()
 {
     // Replace contents with opaque black.
-    uint8_t *framebuffer = impl->framebuffer.get();
-    int framebuffer_size = impl->framebuffer_size;
-    for (int i = 0; i < framebuffer_size; i += 4) {
-        framebuffer[i] = 0x00;
-        framebuffer[i + 1] = 0x00;
-        framebuffer[i + 2] = 0x00;
-        framebuffer[i + 3] = 0xff;
+    uint8_t *frame_buffer = impl->frame_buffer.get();
+    int frame_buffer_size = impl->frame_buffer_size;
+    for (int i = 0; i < frame_buffer_size; i += 4) {
+        frame_buffer[i] = 0x00;
+        frame_buffer[i + 1] = 0x00;
+        frame_buffer[i + 2] = 0x00;
+        frame_buffer[i + 3] = 0xff;
     }
-    impl->last_update_hash = XXH3_64bits(framebuffer, framebuffer_size);
-    EM_ASM_({ workerApi.blit($0, $1); }, framebuffer, framebuffer_size);
+    impl->last_update_hash = XXH3_64bits(frame_buffer, frame_buffer_size);
+    EM_ASM_({ workerApi.blit($0, $1); }, frame_buffer, frame_buffer_size);
 }
 
 void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb, bool draw_hw_cursor, int cursor_x, int cursor_y)
 {
-    uint8_t *framebuffer = impl->framebuffer.get();
-    size_t framebuffer_size = impl->framebuffer_size;
-    convert_fb_cb(framebuffer, impl->framebuffer_pitch);
-    // DingusPPC generates ARGB but in little endian order within a 32-bit word. s
-    // It ends up as BGRA in memory, so we need to swap red and blue channels
-    // to generate the RGBA that the JS side expects.
-    for (size_t i = 0; i < framebuffer_size; i += 4) {
-        std::swap(framebuffer[i], framebuffer[i + 2]);
+    uint8_t *frame_buffer = impl->frame_buffer.get();
+    size_t frame_buffer_size = impl->frame_buffer_size;
+    convert_fb_cb(frame_buffer, impl->frame_buffer_pitch);
+    if (draw_hw_cursor) {
+        uint8_t *cursor_buffer = impl->cursor_buffer.get();
+        int cursor_width = impl->cursor_width;
+        int cursor_height = impl->cursor_height;
+        int cursor_pitch = cursor_width * 4;
+        int base_dst_offset = cursor_y * impl->frame_buffer_pitch + cursor_x * 4;
+        for (int y = 0; y < cursor_height; y++) {
+            for (int x = 0; x < cursor_width; x++) {
+                int src_offset = y * cursor_pitch + x * 4;
+                uint8_t alpha = cursor_buffer[src_offset + 3];
+                if (alpha == 0) {
+                    continue;
+                }
+                int dst_offset = base_dst_offset + y * impl->frame_buffer_pitch + x * 4;
+                if (alpha == 0xff) {
+                    frame_buffer[dst_offset] = cursor_buffer[src_offset];
+                    frame_buffer[dst_offset + 1] = cursor_buffer[src_offset + 1];
+                    frame_buffer[dst_offset + 2] = cursor_buffer[src_offset + 2];
+                } else {
+                    frame_buffer[dst_offset] = (frame_buffer[dst_offset] * (0xff - alpha) + cursor_buffer[src_offset] * alpha) / 0xff;
+                    frame_buffer[dst_offset + 1] = (frame_buffer[dst_offset + 1] * (0xff - alpha) + cursor_buffer[src_offset + 1] * alpha) / 0xff;
+                    frame_buffer[dst_offset + 2] = (frame_buffer[dst_offset + 2] * (0xff - alpha) + cursor_buffer[src_offset + 2] * alpha) / 0xff;
+                }
+            }
+        }
     }
 
-    XXH64_hash_t update_hash = XXH3_64bits(framebuffer, framebuffer_size);
+    // DingusPPC generates ARGB but in little endian order within a 32-bit word.
+    // It ends up as BGRA in memory, so we need to swap red and blue channels
+    // to generate the RGBA that the JS side expects.
+    for (size_t i = 0; i < frame_buffer_size; i += 4) {
+        std::swap(frame_buffer[i], frame_buffer[i + 2]);
+    }
+
+    XXH64_hash_t update_hash = XXH3_64bits(frame_buffer, frame_buffer_size);
 
     if (update_hash == impl->last_update_hash) {
         // Screen has not changed, but we still let the JS know so that it can
@@ -78,10 +109,16 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
 
     impl->last_update_hash = update_hash;
 
-    EM_ASM_({ workerApi.blit($0, $1); }, framebuffer, framebuffer_size);
+    EM_ASM_({ workerApi.blit($0, $1); }, frame_buffer, frame_buffer_size);
 }
 
 void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch)> draw_hw_cursor, int cursor_width, int cursor_height)
 {
-    LOG_F(INFO, "Display::setup_hw_cursor()");
+    int cursor_pitch = cursor_width * 4;
+    if (cursor_width != impl->cursor_width || cursor_height != impl->cursor_height) {
+        impl->cursor_width = cursor_width;
+        impl->cursor_height = cursor_height;
+        impl->cursor_buffer = std::make_unique<uint8_t[]>(cursor_pitch * cursor_height);
+    }
+    draw_hw_cursor(impl->cursor_buffer.get(), cursor_pitch);
 }
