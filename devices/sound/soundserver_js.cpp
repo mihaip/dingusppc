@@ -54,7 +54,6 @@ SoundServer::~SoundServer()
 
 int SoundServer::start()
 {
-    LOG_F(INFO, "SoundServer::start()");
     impl->status = SND_SERVER_STARTED;
     return 0;
 }
@@ -128,7 +127,6 @@ int SoundServer::open_out_stream(uint32_t sample_rate, void *user_data)
 
 int SoundServer::start_out_stream()
 {
-    LOG_F(INFO, "SoundServer::start_out_stream()");
     impl->poll_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(1), impl->poll_cb);
     impl->status = SND_SERVER_STREAM_STARTED;
 
@@ -137,7 +135,6 @@ int SoundServer::start_out_stream()
 
 void SoundServer::close_out_stream()
 {
-    LOG_F(INFO, "SoundServer::close_out_stream()");
     if (impl->status == SND_SERVER_STREAM_STARTED) {
         TimerManager::get_instance()->cancel_timer(impl->poll_timer);
     }
