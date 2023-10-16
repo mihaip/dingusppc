@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
     bool   debugger_enabled = false;
     bool   log_to_stderr = false;
     bool   log_to_stderr_verbose = false;
+    bool   log_no_uptime = false;
     string machine_str;
     string bootrom_path("bootrom.bin");
 
@@ -89,6 +90,8 @@ int main(int argc, char** argv) {
         "Send internal logging to stderr (instead of dingusppc.log)");
     app.add_flag("--log-to-stderr-verbose", log_to_stderr_verbose,
         "Use maximum verbosity when sending logs to stderr");
+    app.add_flag("--log-no-uptime", log_no_uptime,
+        "Disable the uptime preamble of logged messages");
 
     app.add_option("-b,--bootrom", bootrom_path, "Specifies BootROM path")
         ->check(CLI::ExistingFile);
@@ -133,6 +136,7 @@ int main(int argc, char** argv) {
     loguru::g_preamble_date    = false;
     loguru::g_preamble_time    = false;
     loguru::g_preamble_thread  = false;
+    loguru::g_preamble_uptime  = !log_no_uptime;
 
     if (execution_mode == interpreter && !log_to_stderr) {
         loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
