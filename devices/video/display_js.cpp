@@ -31,12 +31,13 @@ Display::~Display() {
 
 bool Display::configure(int width, int height)
 {
+    bool is_initialization = impl->frame_buffer.get() == nullptr;
     impl->frame_buffer_pitch = width * 4;
     impl->frame_buffer_size = height * impl->frame_buffer_pitch;
     impl->frame_buffer = std::make_unique<uint8_t[]>(impl->frame_buffer_size);
     impl->last_update_hash = 0;
     EM_ASM_({ workerApi.didOpenVideo($0, $1); }, width, height);
-    return true;
+    return is_initialization;
 }
 
 void Display::handle_events(const WindowEvent& wnd_event)
