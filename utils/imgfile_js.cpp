@@ -20,12 +20,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <utils/imgfile.h>
+#include <loguru.hpp>
 
 #include <emscripten.h>
 
 class ImgFile::Impl {
 public:
-    int disk_id;
+    int disk_id = -1;
 };
 
 ImgFile::ImgFile(): impl(std::make_unique<Impl>())
@@ -60,6 +61,10 @@ size_t ImgFile::size() const
 
 size_t ImgFile::read(void* buf, off_t offset, size_t length) const
 {
+    if (impl->disk_id == -1) {
+        LOG_F(WARNING, "ImgFile::read before disk was opened, ignoring.");
+        return 0;
+    }
     int read_size = EM_ASM_INT({
         return workerApi.disks.read($0, $1, $2, $3);
     }, impl->disk_id, buf, int(offset), int(length));
@@ -68,6 +73,10 @@ size_t ImgFile::read(void* buf, off_t offset, size_t length) const
 
 size_t ImgFile::write(const void* buf, off_t offset, size_t length)
 {
+    if (impl->disk_id == -1) {
+        LOG_F(WARNING, "ImgFile::write before disk was opened, ignoring.");
+        return 0;
+    }
     int write_size = EM_ASM_INT({
         return workerApi.disks.write($0, $1, $2, $3);
     }, impl->disk_id, buf, int(offset), int(length));
