@@ -152,12 +152,15 @@ elseif (EMSCRIPTEN)
     target_link_libraries(dingusppc PRIVATE
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
                                     "-gsource-map"
-                                    # 256 MB max for emulated Mac RAM, plus 32 MB of emulator overhead
-                                    "-s INITIAL_MEMORY=301989888"
+                                    # 256 MB max for emulated Mac RAM, times 2
+                                    # in case we need to restart (and heap
+                                    # fragmentation prevents us from getting the
+                                    # same area), plus 32 MB of emulator overhead.
+                                    "-s INITIAL_MEMORY=570425344"
                                     "-s MODULARIZE"
                                     "-s EXPORT_ES6"
                                     "-s EXPORT_NAME=emulator"
-                                    "-s 'EXTRA_EXPORTED_RUNTIME_METHODS=[\"FS\"]'")
+                                    "-s 'EXPORTED_RUNTIME_METHODS=[\"FS\"]'")
 else()
     target_link_libraries(dingusppc PRIVATE SDL2::SDL2 SDL2::SDL2main cubeb
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
