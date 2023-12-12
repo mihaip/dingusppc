@@ -80,6 +80,9 @@ void EventManager::poll_events()
 
     EM_ASM({ workerApi.releaseInputLock(); });
 
+    // Ensure that period tasks are run (until we have idlewait support).
+    EM_ASM({ workerApi.sleep(0); });
+
     // perform post-processing
     this->_post_signal.emit();
 }
