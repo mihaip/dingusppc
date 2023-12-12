@@ -84,6 +84,9 @@
 	#ifndef LOGURU_STACKTRACES
 		#define LOGURU_STACKTRACES 0
 	#endif
+#elif defined(EMSCRIPTEN)
+	#define LOGURU_PTHREADS    0
+	#define LOGURU_WINTHREADS  0
 #else
 	#define LOGURU_PTHREADS    1
 	#define LOGURU_WINTHREADS  0
