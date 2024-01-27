@@ -60,11 +60,19 @@ void Display::blank()
     EM_ASM_({ workerApi.blit($0, $1); }, frame_buffer, frame_buffer_size);
 }
 
-void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb, bool draw_hw_cursor, int cursor_x, int cursor_y)
+void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb,
+                     std::function<void(uint8_t *dst_buf, int dst_pitch)> cursor_ovl_cb,
+                     bool draw_hw_cursor, int cursor_x, int cursor_y)
 {
     uint8_t *frame_buffer = impl->frame_buffer.get();
     size_t frame_buffer_size = impl->frame_buffer_size;
     convert_fb_cb(frame_buffer, impl->frame_buffer_pitch);
+
+    // overlay cursor data if requested
+    if (cursor_ovl_cb != nullptr) {
+        cursor_ovl_cb(frame_buffer, impl->frame_buffer_pitch);
+    }
+
     if (draw_hw_cursor) {
         uint8_t *cursor_buffer = impl->cursor_buffer.get();
         int cursor_width = impl->cursor_width;
@@ -92,23 +100,21 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
         }
     }
 
-    // DingusPPC generates ARGB but in little endian order within a 32-bit word.
-    // It ends up as BGRA in memory, so we need to swap red and blue channels
-    // to generate the RGBA that the JS side expects.
-    for (size_t i = 0; i < frame_buffer_size; i += 4) {
-        std::swap(frame_buffer[i], frame_buffer[i + 2]);
-    }
-
     XXH64_hash_t update_hash = XXH3_64bits(frame_buffer, frame_buffer_size);
-
     if (update_hash == impl->last_update_hash) {
         // Screen has not changed, but we still let the JS know so that it can
         // keep track of screen refreshes when deciding how long to idle for.
         EM_ASM({ workerApi.blit(0, 0); });
         return;
     }
-
     impl->last_update_hash = update_hash;
+
+    // DingusPPC generates ARGB but in little endian order within a 32-bit word.
+    // It ends up as BGRA in memory, so we need to swap red and blue channels
+    // to generate the RGBA that the JS side expects.
+    for (size_t i = 0; i < frame_buffer_size; i += 4) {
+        std::swap(frame_buffer[i], frame_buffer[i + 2]);
+    }
 
     EM_ASM_({ workerApi.blit($0, $1); }, frame_buffer, frame_buffer_size);
 }
