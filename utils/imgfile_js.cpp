@@ -51,6 +51,10 @@ bool ImgFile::open(const std::string &img_path)
 
 void ImgFile::close()
 {
+    if (impl->disk_id == -1) {
+        LOG_F(WARNING, "ImgFile::close before disk was opened, ignoring.");
+        return;
+    }
     EM_ASM_({ workerApi.disks.close($0); }, impl->disk_id);
 }
 
