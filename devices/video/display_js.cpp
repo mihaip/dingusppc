@@ -12,6 +12,8 @@ class Display::Impl
 public:
     std::unique_ptr<uint8_t[]> frame_buffer;
     int frame_buffer_size;
+    int frame_buffer_width;
+    int frame_buffer_height;
     int frame_buffer_pitch;
     XXH64_hash_t last_update_hash;
 
@@ -32,6 +34,8 @@ Display::~Display() {
 bool Display::configure(int width, int height)
 {
     bool is_initialization = impl->frame_buffer.get() == nullptr;
+    impl->frame_buffer_width = width;
+    impl->frame_buffer_height = height;
     impl->frame_buffer_pitch = width * 4;
     impl->frame_buffer_size = height * impl->frame_buffer_pitch;
     impl->frame_buffer = std::make_unique<uint8_t[]>(impl->frame_buffer_size);
@@ -75,12 +79,17 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
 
     if (draw_hw_cursor) {
         uint8_t *cursor_buffer = impl->cursor_buffer.get();
-        int cursor_width = impl->cursor_width;
-        int cursor_height = impl->cursor_height;
-        int cursor_pitch = cursor_width * 4;
+        // Clip cursor to screen bounds
+        int cursor_pitch = impl->cursor_width * 4;
+        int cursor_width = std::min(
+            impl->cursor_width, impl->frame_buffer_width - cursor_x);
+        int cursor_height = std::min(
+            impl->cursor_height, impl->frame_buffer_height - cursor_y);
+        int cursor_start_x = cursor_x < 0 ? -cursor_x : 0;
+        int cursor_start_y = cursor_y < 0 ? -cursor_y : 0;
         int base_dst_offset = cursor_y * impl->frame_buffer_pitch + cursor_x * 4;
-        for (int y = 0; y < cursor_height; y++) {
-            for (int x = 0; x < cursor_width; x++) {
+        for (int y = cursor_start_y; y < cursor_height; y++) {
+            for (int x = cursor_start_x; x < cursor_width; x++) {
                 int src_offset = y * cursor_pitch + x * 4;
                 uint8_t alpha = cursor_buffer[src_offset + 3];
                 if (alpha == 0) {
