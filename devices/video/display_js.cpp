@@ -121,8 +121,10 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
     // DingusPPC generates ARGB but in little endian order within a 32-bit word.
     // It ends up as BGRA in memory, so we need to swap red and blue channels
     // to generate the RGBA that the JS side expects.
+    // We also force the alpha channel to 0xff to avoid transparency issues.
     for (size_t i = 0; i < frame_buffer_size; i += 4) {
         std::swap(frame_buffer[i], frame_buffer[i + 2]);
+        frame_buffer[i + 3] = 0xff;
     }
 
     EM_ASM_({ workerApi.blit($0, $1); }, frame_buffer, frame_buffer_size);
