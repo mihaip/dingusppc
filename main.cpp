@@ -252,14 +252,6 @@ int main(int argc, char** argv) {
         cout << "Using deterministic execution mode, input will be ignored." << endl;
     }
 
-    if (!init()) {
-        LOG_F(ERROR, "Cannot initialize");
-        return 1;
-    }
-
-    // initialize global profiler object
-    gProfilerObj.reset(new Profiler());
-
     // graceful handling of fatal errors
     loguru::set_fatal_handler([](const loguru::Message& message) {
         // Make sure the reason for the failure is visible (it may have been
@@ -271,6 +263,14 @@ int main(int argc, char** argv) {
         // Ensure that NVRAM and other state is persisted before we terminate.
         delete gMachineObj.release();
     });
+
+    if (!init()) {
+        LOG_F(ERROR, "Cannot initialize");
+        return 1;
+    }
+
+    // initialize global profiler object
+    gProfilerObj.reset(new Profiler());
 
     // redirect SIGINT to our own handler
     signal(SIGINT, sigint_handler);
