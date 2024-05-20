@@ -49,6 +49,10 @@ if (EMSCRIPTEN)
     add_compile_definitions(LOGURU_STACKTRACES=0)
 endif()
 
+add_compile_definitions(CPU_PROFILING=1)
+add_compile_definitions(CPU_PROFILING_OPS=1)
+#set(CMAKE_BUILD_RPATH /Library/Frameworks/)
+
 option(DPPC_BUILD_PPC_TESTS  "Build PowerPC tests" OFF)
 option(DPPC_BUILD_BENCHMARKS "Build benchmarking programs" OFF)
 
