@@ -58,31 +58,32 @@ void ImgFile::close()
     EM_ASM_({ workerApi.disks.close($0); }, impl->disk_id);
 }
 
-size_t ImgFile::size() const
+uint64_t ImgFile::size() const
 {
-    return EM_ASM_INT({ return workerApi.disks.size($0); }, impl->disk_id);
+    // Need to use EM_ASM_DOUBLE because EM_ASM_INT clamps to 32-bit
+    return EM_ASM_DOUBLE({ return workerApi.disks.size($0); }, impl->disk_id);
 }
 
-size_t ImgFile::read(void* buf, off_t offset, size_t length) const
+uint64_t ImgFile::read(void* buf, uint64_t offset, uint64_t length) const
 {
     if (impl->disk_id == -1) {
         LOG_F(WARNING, "ImgFile::read before disk was opened, ignoring.");
         return 0;
     }
-    int read_size = EM_ASM_INT({
+    uint64_t read_size = EM_ASM_DOUBLE({
         return workerApi.disks.read($0, $1, $2, $3);
-    }, impl->disk_id, buf, int(offset), int(length));
+    }, impl->disk_id, buf, double(offset), double(length));
     return read_size;
 }
 
-size_t ImgFile::write(const void* buf, off_t offset, size_t length)
+uint64_t ImgFile::write(const void* buf, uint64_t offset, uint64_t length)
 {
     if (impl->disk_id == -1) {
         LOG_F(WARNING, "ImgFile::write before disk was opened, ignoring.");
         return 0;
     }
-    int write_size = EM_ASM_INT({
+    uint64_t write_size = EM_ASM_DOUBLE({
         return workerApi.disks.write($0, $1, $2, $3);
-    }, impl->disk_id, buf, int(offset), int(length));
+    }, impl->disk_id, buf, double(offset), double(length));
     return write_size;
 }
