@@ -66,7 +66,8 @@ void Display::blank()
 
 void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb,
                      std::function<void(uint8_t *dst_buf, int dst_pitch)> cursor_ovl_cb,
-                     bool draw_hw_cursor, int cursor_x, int cursor_y)
+                     bool draw_hw_cursor, int cursor_x, int cursor_y,
+                     bool fb_known_to_be_changed)
 {
     uint8_t *frame_buffer = impl->frame_buffer.get();
     size_t frame_buffer_size = impl->frame_buffer_size;
@@ -109,14 +110,14 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
         }
     }
 
-    XXH64_hash_t update_hash = XXH3_64bits(frame_buffer, frame_buffer_size);
-    if (update_hash == impl->last_update_hash) {
-        // Screen has not changed, but we still let the JS know so that it can
-        // keep track of screen refreshes when deciding how long to idle for.
-        EM_ASM({ workerApi.blit(0, 0); });
-        return;
+    if (!fb_known_to_be_changed) {
+        XXH64_hash_t update_hash = XXH3_64bits(frame_buffer, frame_buffer_size);
+        if (update_hash == impl->last_update_hash) {
+            this->update_skipped();
+            return;
+        }
+        impl->last_update_hash = update_hash;
     }
-    impl->last_update_hash = update_hash;
 
     // DingusPPC generates ARGB but in little endian order within a 32-bit word.
     // It ends up as BGRA in memory, so we need to swap red and blue channels
@@ -128,6 +129,13 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
     }
 
     EM_ASM_({ workerApi.blit($0, $1); }, frame_buffer, frame_buffer_size);
+}
+
+void Display::update_skipped()
+{
+    // Screen has not changed, but we still let the JS know so that it can
+    // keep track of screen refreshes when deciding how long to idle for.
+    EM_ASM({ workerApi.blit(0, 0); });
 }
 
 void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch)> draw_hw_cursor, int cursor_width, int cursor_height)
