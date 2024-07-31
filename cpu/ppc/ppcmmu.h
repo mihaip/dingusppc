@@ -88,6 +88,18 @@ constexpr uint32_t TLB_SIZE           = 4096;
 constexpr uint32_t TLB2_WAYS          = 4;
 constexpr uint32_t TLB_INVALID_TAG    = 0xFFFFFFFF;
 
+enum TLBFlags : uint16_t {
+    PAGE_MEM      = 1 << 0, // memory page backed by host memory
+    PAGE_IO       = 1 << 1, // memory mapped I/O page
+    PAGE_NOPHYS   = 1 << 2, // no physical storage for this page (unmapped)
+    TLBE_FROM_BAT = 1 << 3, // TLB entry has been translated with BAT
+    TLBE_FROM_PAT = 1 << 4, // TLB entry has been translated with PAT
+    PAGE_WRITABLE = 1 << 5, // page is writable
+    PTE_SET_C     = 1 << 6, // tells if C bit of the PTE needs to be updated
+};
+
+extern uint32_t gTLBPatSequence;
+
 typedef struct TLBEntry {
     uint32_t    tag;
     uint16_t    flags;
@@ -103,18 +115,16 @@ typedef struct TLBEntry {
         };
     };
     uint32_t phys_tag;
-    uint32_t reserved;
-} TLBEntry;
+    uint32_t pat_sequence;
 
-enum TLBFlags : uint16_t {
-    PAGE_MEM      = 1 << 0, // memory page backed by host memory
-    PAGE_IO       = 1 << 1, // memory mapped I/O page
-    PAGE_NOPHYS   = 1 << 2, // no physical storage for this page (unmapped)
-    TLBE_FROM_BAT = 1 << 3, // TLB entry has been translated with BAT
-    TLBE_FROM_PAT = 1 << 4, // TLB entry has been translated with PAT
-    PAGE_WRITABLE = 1 << 5, // page is writable
-    PTE_SET_C     = 1 << 6, // tells if C bit of the PTE needs to be updated
-};
+    inline bool is_invalid() {
+        return tag == TLB_INVALID_TAG || (flags & TLBE_FROM_PAT && pat_sequence != gTLBPatSequence);
+    }
+
+    inline bool matches_tag(uint32_t tag_in) {
+        return tag == tag_in && !(flags & TLBE_FROM_PAT && pat_sequence != gTLBPatSequence);
+    }
+} TLBEntry;
 
 extern std::function<void(uint32_t bat_reg)> ibat_update;
 extern std::function<void(uint32_t bat_reg)> dbat_update;
