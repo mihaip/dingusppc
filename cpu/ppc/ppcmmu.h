@@ -116,6 +116,23 @@ enum TLBFlags : uint16_t {
     PTE_SET_C     = 1 << 6, // tells if C bit of the PTE needs to be updated
 };
 
+template <std::size_t N>
+struct TLBEntries {
+    std::array<TLBEntry, N> entries;
+
+    // Items from entries array that were translated with PAT (have the
+    // TLBE_FROM_PAT flag) are currently valid.
+    std::vector<TLBEntry *> pat_entries;
+
+    void add_pat_entry(TLBEntry *entry) {
+        pat_entries.push_back(entry);
+    }
+
+    void remove_pat_entry(TLBEntry *entry) {
+        std::erase(pat_entries, entry);
+    }
+};
+
 extern std::function<void(uint32_t bat_reg)> ibat_update;
 extern std::function<void(uint32_t bat_reg)> dbat_update;
 
