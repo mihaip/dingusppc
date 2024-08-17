@@ -35,9 +35,22 @@ void EventManager::poll_events()
     int mouse_button_state = EM_ASM_INT_V({
         return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButtonStateAddr);
     });
-    if (mouse_button_state > -1) {
+    int mouse_button2_state = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButton2StateAddr);
+    });
+    if (mouse_button_state > -1 || mouse_button2_state > -1) {
         MouseEvent me;
-        me.buttons_state = mouse_button_state;
+        if (mouse_button_state == 0) {
+            this->buttons_state &= ~1;
+        } else if (mouse_button_state == 1) {
+            this->buttons_state |= 1;
+        }
+        if (mouse_button2_state == 0) {
+            this->buttons_state &= ~2;
+        } else if (mouse_button2_state == 1) {
+            this->buttons_state |= 2;
+        }
+        me.buttons_state = this->buttons_state;
         me.flags         = MOUSE_EVENT_BUTTON;
         this->_mouse_signal.emit(me);
     }
@@ -46,16 +59,19 @@ void EventManager::poll_events()
         return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
     });
     if (has_mouse_position) {
-        int delta_x = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaXAddr);
-        });
-        int delta_y = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaYAddr);
-        });
-
         MouseEvent me;
-        me.xrel  = delta_x;
-        me.yrel  = delta_y;
+        me.xrel  = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaXAddr);
+        });;
+        me.yrel  = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaYAddr);
+        });;
+        me.xabs  = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionXAddr);
+        });
+        me.yabs  = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionYAddr);
+        });
         me.flags = MOUSE_EVENT_MOTION;
         this->_mouse_signal.emit(me);
     }
