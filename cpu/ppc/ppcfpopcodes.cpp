@@ -132,6 +132,7 @@ static void fpresult_update(double set_result) {
             ppc_state.fpscr |= FPCC_ZERO;
         }
         
+#ifndef EMSCRIPTEN
         if (std::fetestexcept(FE_OVERFLOW)) {
             ppc_state.fpscr |= (OX + FX);
         }
@@ -141,7 +142,7 @@ static void fpresult_update(double set_result) {
         if (std::fetestexcept(FE_DIVBYZERO)) {
             ppc_state.fpscr |= (ZX + FX);
         }
-
+#endif
         std::feclearexcept(FE_ALL_EXCEPT);
 
         if (std::isinf(set_result))
