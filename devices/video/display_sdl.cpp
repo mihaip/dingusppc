@@ -29,6 +29,8 @@ public:
     uint32_t        disp_wnd_id = 0;
     SDL_Window*     display_wnd = 0;
     SDL_Renderer*   renderer = 0;
+    double          renderer_scale_x; // scaling factor from guest OS to host OS
+    double          renderer_scale_y;
     SDL_Texture*    disp_texture = 0;
     SDL_Texture*    cursor_texture = 0;
     SDL_Rect        cursor_rect; // destination rectangle for cursor drawing
@@ -61,7 +63,7 @@ bool Display::configure(int width, int height) {
             SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED,
             width, height,
-            SDL_WINDOW_OPENGL
+            SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI
         );
 
         impl->disp_wnd_id = SDL_GetWindowID(impl->display_wnd);
@@ -71,6 +73,11 @@ bool Display::configure(int width, int height) {
         impl->renderer = SDL_CreateRenderer(impl->display_wnd, -1, SDL_RENDERER_ACCELERATED);
         if (impl->renderer == NULL)
             ABORT_F("Display: SDL_CreateRenderer failed with %s", SDL_GetError());
+
+        int drawable_width, drawable_height;
+        SDL_GetRendererOutputSize(impl->renderer, &drawable_width, &drawable_height);
+        impl->renderer_scale_x = static_cast<double>(drawable_width) / width;
+        impl->renderer_scale_y = static_cast<float>(drawable_height) / height;
 
         is_initialization = true;
     } else { // resize display window
@@ -133,8 +140,8 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
 
     // draw HW cursor if enabled
     if (draw_hw_cursor) {
-        impl->cursor_rect.x = cursor_x;
-        impl->cursor_rect.y = cursor_y;
+        impl->cursor_rect.x = cursor_x * impl->renderer_scale_x;
+        impl->cursor_rect.y = cursor_y * impl->renderer_scale_y;
         SDL_RenderCopy(impl->renderer, impl->cursor_texture, NULL, &impl->cursor_rect);
     }
 
@@ -170,6 +177,6 @@ void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch
 
     impl->cursor_rect.x = 0;
     impl->cursor_rect.y = 0;
-    impl->cursor_rect.w = cursor_width;
-    impl->cursor_rect.h = cursor_height;
+    impl->cursor_rect.w = cursor_width * impl->renderer_scale_x;
+    impl->cursor_rect.h = cursor_height * impl->renderer_scale_y;
 }

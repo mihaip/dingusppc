@@ -43,6 +43,9 @@ bool init() {
         }
     }
 
+    // Make sure we always use nearest-neighbor to scale window contents.
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+
 #ifdef __APPLE__
     remap_appkit_menu_shortcuts();
 #endif
