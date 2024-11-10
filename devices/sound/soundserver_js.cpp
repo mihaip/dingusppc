@@ -105,7 +105,7 @@ static void poll_sound(uint8_t *sound_buffer, int sound_buffer_size, DmaOutChann
     EM_ASM_({ workerApi.enqueueAudio($0, $1); }, sound_buffer, out_size);
 }
 
-int SoundServer::open_out_stream(uint32_t sample_rate, void *user_data)
+int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
 {
     uint32_t sample_size = 16;
     uint32_t channels = 2;
@@ -117,7 +117,7 @@ int SoundServer::open_out_stream(uint32_t sample_rate, void *user_data)
     int sound_buffer_size = (sample_size >> 3) * channels * audio_frames_per_block;
     impl->sound_buffer = std::make_unique<uint8_t[]>(sound_buffer_size);
 
-    impl->poll_cb = std::bind(poll_sound, impl->sound_buffer.get(), sound_buffer_size, static_cast<DmaOutChannel*>(user_data));
+    impl->poll_cb = std::bind(poll_sound, impl->sound_buffer.get(), sound_buffer_size, dma_ch);
     impl->status = SND_SERVER_STREAM_OPENED;
 
     EM_ASM_({ workerApi.didOpenAudio($0, $1, $2, $3); }, sample_rate, sample_size, channels);
