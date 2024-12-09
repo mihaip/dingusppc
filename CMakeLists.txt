@@ -47,6 +47,7 @@ if (EMSCRIPTEN)
     message(STATUS "Targeting Emscripten")
     # loguru tries to include excinfo.h, which is not available under Emscripten.
     add_compile_definitions(LOGURU_STACKTRACES=0)
+    add_compile_options(-flto)
 endif()
 
 option(DPPC_BUILD_PPC_TESTS  "Build PowerPC tests" OFF)
@@ -160,7 +161,9 @@ elseif (EMSCRIPTEN)
                                     "-s MODULARIZE"
                                     "-s EXPORT_ES6"
                                     "-s EXPORT_NAME=emulator"
-                                    "-s 'EXPORTED_RUNTIME_METHODS=[\"FS\"]'")
+                                    "-s 'EXPORTED_RUNTIME_METHODS=[\"FS\"]'"
+                                    "-flto"
+                                    "-s ENVIRONMENT=worker")
 else()
     target_link_libraries(dingusppc PRIVATE SDL2::SDL2 SDL2::SDL2main cubeb
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
