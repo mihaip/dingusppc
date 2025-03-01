@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 EventManager* EventManager::event_manager;
 
-void EventManager::poll_events()
+void EventManager::poll_events(uint32_t kbd_locale)
 {
     int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
     if (!lock) {
