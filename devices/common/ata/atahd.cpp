@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <bitset>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <string>
 
 using namespace ata_interface;
@@ -57,7 +58,11 @@ int AtaHardDisk::device_postinit() {
     auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
     bus_obj->register_device(dev_num, this);
 
-    this->insert_image(hdd_image_path);
+    std::string single_image_path;
+    std::istringstream hdd_image_stream(hdd_image_path);
+    while (std::getline(hdd_image_stream, single_image_path, ':')) {
+        this->insert_image(single_image_path);
+    }
 
     return 0;
 }
