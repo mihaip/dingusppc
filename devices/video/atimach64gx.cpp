@@ -850,7 +850,7 @@ int AtiMach64Gx::device_postinit()
 #endif
             0;
 
-        LOG_F(WARNING, "%s: irq_line_state:%d do_interrupt:%d CRTC_INT_CNTL:%08x",
+        LOG_F(9, "%s: irq_line_state:%d do_interrupt:%d CRTC_INT_CNTL:%08x",
               this->name.c_str(), irq_line_state, do_interrupt,
               this->regs[ATI_CRTC_INT_CNTL]);
 
