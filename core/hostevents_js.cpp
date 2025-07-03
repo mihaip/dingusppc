@@ -25,7 +25,28 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 EventManager* EventManager::event_manager;
 
-void EventManager::poll_events(uint32_t kbd_locale)
+static void post_key_event(const CoreSignal<const KeyboardEvent&> &signal)
+{
+    int has_key_event = EM_ASM_INT_V({
+        return workerApi.getInputValue(workerApi.InputBufferAddresses.keyEventFlagAddr);
+    });
+    if (has_key_event) {
+        int keycode = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyCodeAddr);
+        });
+
+        int keystate = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyStateAddr);
+        });
+
+        KeyboardEvent ke;
+        ke.key       = keycode;
+        ke.flags     = keystate == 0 ? KEYBOARD_EVENT_UP : KEYBOARD_EVENT_DOWN;
+        signal.emit(ke);
+    }
+}
+
+void EventManager::poll_events()
 {
     int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
     if (!lock) {
@@ -76,23 +97,7 @@ void EventManager::poll_events(uint32_t kbd_locale)
         this->_mouse_signal.emit(me);
     }
 
-    int has_key_event = EM_ASM_INT_V({
-        return workerApi.getInputValue(workerApi.InputBufferAddresses.keyEventFlagAddr);
-    });
-    if (has_key_event) {
-        int keycode = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyCodeAddr);
-        });
-
-        int keystate = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.keyStateAddr);
-        });
-
-        KeyboardEvent ke;
-        ke.key       = keycode;
-        ke.flags     = keystate == 0 ? KEYBOARD_EVENT_UP : KEYBOARD_EVENT_DOWN;
-        this->_keyboard_signal.emit(ke);
-    }
+    post_key_event(this->_keyboard_signal);
 
     EM_ASM({ workerApi.releaseInputLock(); });
 
@@ -101,4 +106,18 @@ void EventManager::poll_events(uint32_t kbd_locale)
 
     // perform post-processing
     this->_post_signal.emit();
+}
+
+void EventManager::post_keyboard_state_events()
+{
+    int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
+    if (!lock) {
+        return;
+    }
+    post_key_event(this->_keyboard_signal);
+    EM_ASM({ workerApi.releaseInputLock(); });
+}
+
+void EventManager::set_keyboard_locale(uint32_t keyboard_id) {
+    this->kbd_locale = keyboard_id;
 }
