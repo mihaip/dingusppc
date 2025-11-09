@@ -72,6 +72,8 @@ static const map<string, string> PropHelp = {
     {"cdr_config",      "CD-ROM device path in [bus]:[device#] format"},
     {"cdr_img",         "specifies path(s) to CD-ROM image(s)"},
     {"cdr_img2",        "specifies path(s) to secondary CD-ROM image(s)"},
+    {"bluescsi_dir",    "specifies directory path(s) to expose via the BlueSCSI Toolbox protocol"},
+    {"bluescsi_dir2",   "specifies directory path(s) to expose via the BlueSCSI Toolbox protocol"},
     {"mon_id",          "specifies which monitor to emulate"},
     {"pci_GPU",         "specifies PCI device for Beige G3 grackle device @12"},
     {"pci_J12",         "insert a PCI device into 32-bit 66MHz slot J12"},
