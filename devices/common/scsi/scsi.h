@@ -334,6 +334,8 @@ public:
     }
 
 protected:
+    virtual int vendor_cmd_group_len(int group);
+
     uint8_t     cmd_buf[16] = {};
     uint8_t     msg_buf[16] = {}; // TODO: clarify how big this one should be
     int         scsi_id;

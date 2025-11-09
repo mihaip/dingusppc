@@ -878,6 +878,8 @@ int Sc53C94::xfer_to(DmaChannel *ch_obj, uint8_t *buf, int len) {
 static const PropMap Sc53C94_properties = {
     {"hdd_img", new StrProperty("")},
     {"cdr_img", new StrProperty("")},
+    {"bluescsi_dir", new StrProperty("")},
+    {"bluescsi_send_dir", new StrProperty("")},
 };
 
 static const std::vector<std::string> Sc53C94_Subdevices = {
