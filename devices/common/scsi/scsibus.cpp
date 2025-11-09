@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsi.h>
 #include <devices/common/scsi/scsihd.h>
 #include <devices/common/scsi/scsicdrom.h>
+#include <devices/common/scsi/bluescsi.h>
 #include <devices/deviceregistry.h>
 #include <machines/machinebase.h>
 #include <loguru.hpp>
@@ -370,6 +371,28 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
             }
             else {
                 LOG_F(ERROR, "%s: Too many devices. CD-ROM \"%s\" was not added.",
+                      this->get_name().c_str(), path.c_str());
+            }
+        }
+    }
+
+    image_path = GET_STR_PROP("bluescsi_dir" + bus_suffix);
+    if (!image_path.empty()) {
+        std::istringstream image_stream(image_path);
+        while (std::getline(image_stream, path, ':')) {
+            for (scsi_id = 0; scsi_id < SCSI_MAX_DEVS &&
+                 this->devices[scsi_id]; scsi_id++) {}
+
+            if (scsi_id < SCSI_MAX_DEVS) {
+                std::string scsi_device_name = "BlueScsi" + bus_suffix + "," +
+                                               std::to_string(scsi_id);
+                BlueScsi *scsi_device = new BlueScsi(scsi_device_name, scsi_id, path);
+                gMachineObj->add_device(scsi_device_name,
+                                        std::unique_ptr<BlueScsi>(scsi_device));
+                this->register_device(scsi_id, scsi_device);
+            }
+            else {
+                LOG_F(ERROR, "%s: Too many devices. BlueSCSI \"%s\" was not added.",
                       this->get_name().c_str(), path.c_str());
             }
         }

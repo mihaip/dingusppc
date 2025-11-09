@@ -306,6 +306,7 @@ void MeshController::report_error(const int error) {
 static const PropMap Mesh_properties = {
     {"hdd_img2", new StrProperty("")},
     {"cdr_img2", new StrProperty("")},
+    {"bluescsi_dir2", new StrProperty("")},
 };
 
 static const std::vector<std::string> Mesh_Subdevices = {

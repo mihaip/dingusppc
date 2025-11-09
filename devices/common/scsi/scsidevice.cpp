@@ -193,10 +193,13 @@ int ScsiDevice::xfer_data() {
         break;
     case ScsiPhase::COMMAND:
         if (this->bus_obj->pull_data(this->initiator_id, this->cmd_buf, 1)) {
-            int cmd_len = CmdGroupLen[this->cmd_buf[0] >> 5];
+            int group = this->cmd_buf[0] >> 5;
+            int cmd_len = group == 6 || group == 7
+                ? this->vendor_cmd_group_len(group)
+                : CmdGroupLen[group];
             if (cmd_len < 0) {
-                ABORT_F("%s: unsupported command received, code = 0x%X",
-                        this->name.c_str(), this->msg_buf[0]);
+                ABORT_F("%s: unsupported command received, group=0x%X, code = 0x%X",
+                        this->name.c_str(), this->cmd_buf[0] >> 5, this->msg_buf[0]);
             }
             if (this->bus_obj->pull_data(this->initiator_id, &this->cmd_buf[1], cmd_len - 1))
                 this->next_step();
@@ -308,4 +311,9 @@ void ScsiDevice::process_message() {
         if (!this->bus_obj->pull_data(this->initiator_id, &this->msg_buf[1], 1))
             ABORT_F("%s: incomplete message received", this->name.c_str());
     }
+}
+
+int ScsiDevice::vendor_cmd_group_len(int group) {
+    // Default to not supporting vendor-specific commands
+    return -1;
 }
