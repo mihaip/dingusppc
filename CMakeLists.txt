@@ -214,7 +214,7 @@ if (WIN32)
 elseif (EMSCRIPTEN)
     target_link_libraries(dingusppc PRIVATE
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
-                                    "-gsource-map"
+                                    "-gsource-map -g2 -lexports.js"
                                     # 256 MB max for emulated Mac RAM, times 2
                                     # in case we need to restart (and heap
                                     # fragmentation prevents us from getting the
