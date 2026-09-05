@@ -56,6 +56,7 @@ void ImgFile::close()
         return;
     }
     EM_ASM_({ workerApi.disks.close($0); }, impl->disk_id);
+    impl->disk_id = -1;
 }
 
 uint64_t ImgFile::size() const
