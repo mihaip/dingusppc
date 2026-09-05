@@ -23,6 +23,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <emscripten.h>
 
+#include <cstdlib>
+#include <string>
+
 EventManager* EventManager::event_manager;
 bool g_swap_command_option = false;
 
@@ -45,6 +48,52 @@ static void post_key_event(const CoreSignal<const KeyboardEvent&> &signal)
         ke.flags     = keystate == 0 ? KEYBOARD_EVENT_UP : KEYBOARD_EVENT_DOWN;
         signal.emit(ke);
     }
+}
+
+static void report_cdrom_insertion_error(const std::string& error)
+{
+    LOG_F(ERROR, "%s", error.c_str());
+    EM_ASM_({ workerApi.reportError(UTF8ToString($0)); }, error.c_str());
+}
+
+static void poll_cdrom_insertion(const CoreSignal<CdromImageEvent&> &signal)
+{
+    char* path = reinterpret_cast<char*>(EM_ASM_PTR({
+        const name = workerApi.disks.consumeCdromName();
+        if (!name) {
+            return 0;
+        }
+        const name_length = lengthBytesUTF8(name) + 1;
+        const name_cstr = _malloc(name_length);
+        stringToUTF8(name, name_cstr, name_length);
+        return name_cstr;
+    }));
+    if (!path) {
+        return;
+    }
+
+    CdromImageEvent cdrom_event{};
+    cdrom_event.image_path = path;
+    signal.emit(cdrom_event);
+
+    switch (cdrom_event.result) {
+    case CdromInsertionResult::SUCCESS:
+        LOG_F(INFO, "Inserted CD-ROM image: %s", path);
+        break;
+    case CdromInsertionResult::NO_DRIVE:
+        report_cdrom_insertion_error(
+            std::string("Cannot insert CD-ROM image; no CD-ROM drive is available: ") + path);
+        break;
+    case CdromInsertionResult::MEDIA_PRESENT:
+        report_cdrom_insertion_error(
+            std::string("Cannot insert CD-ROM image; eject the current media first: ") + path);
+        break;
+    case CdromInsertionResult::IMAGE_OPEN_FAILED:
+        report_cdrom_insertion_error(std::string("Cannot insert CD-ROM image: ") + path);
+        break;
+    }
+
+    std::free(path);
 }
 
 void EventManager::poll_events()
@@ -101,6 +150,8 @@ void EventManager::poll_events()
     post_key_event(this->_keyboard_signal);
 
     EM_ASM({ workerApi.releaseInputLock(); });
+
+    poll_cdrom_insertion(this->_cdrom_signal);
 
     // Ensure that period tasks are run (until we have idlewait support).
     EM_ASM({ workerApi.sleep(0); });
