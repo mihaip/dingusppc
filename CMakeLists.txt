@@ -231,6 +231,7 @@ elseif (EMSCRIPTEN)
                                     "-s EXPORT_ES6"
                                     "-s EXPORT_NAME=emulator"
                                     "-s 'EXPORTED_RUNTIME_METHODS=[\"FS\",\"HEAPU8\"]'"
+                                    "-s 'EXPORTED_FUNCTIONS=[\"_malloc\",\"_free\",\"_main\"]'"
                                     "-flto"
                                     "-s ENVIRONMENT=worker")
 else()
