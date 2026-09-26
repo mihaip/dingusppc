@@ -99,64 +99,62 @@ static void poll_cdrom_insertion(const CoreSignal<CdromImageEvent&> &signal)
 void EventManager::poll_events()
 {
     int lock = EM_ASM_INT_V({ return workerApi.acquireInputLock(); });
-    if (!lock) {
-        return;
-    }
-
-    int mouse_button_state = EM_ASM_INT_V({
-        return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButtonStateAddr);
-    });
-    int mouse_button2_state = EM_ASM_INT_V({
-        return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButton2StateAddr);
-    });
-    if (mouse_button_state > -1 || mouse_button2_state > -1) {
-        MouseEvent me;
-        if (mouse_button_state == 0) {
-            this->buttons_state &= ~1;
-        } else if (mouse_button_state == 1) {
-            this->buttons_state |= 1;
-        }
-        if (mouse_button2_state == 0) {
-            this->buttons_state &= ~2;
-        } else if (mouse_button2_state == 1) {
-            this->buttons_state |= 2;
-        }
-        me.buttons_state = this->buttons_state;
-        me.flags         = MOUSE_EVENT_BUTTON;
-        this->_mouse_signal.emit(me);
-    }
-
-    int has_mouse_position = EM_ASM_INT_V({
-        return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
-    });
-    if (has_mouse_position) {
-        MouseEvent me;
-        me.xrel  = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaXAddr);
-        });;
-        me.yrel  = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaYAddr);
-        });;
-        me.xabs  = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionXAddr);
+    if (lock) {
+        int mouse_button_state = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButtonStateAddr);
         });
-        me.yabs  = EM_ASM_INT_V({
-            return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionYAddr);
+        int mouse_button2_state = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseButton2StateAddr);
         });
-        me.flags = MOUSE_EVENT_MOTION;
-        this->_mouse_signal.emit(me);
+        if (mouse_button_state > -1 || mouse_button2_state > -1) {
+            MouseEvent me;
+            if (mouse_button_state == 0) {
+                this->buttons_state &= ~1;
+            } else if (mouse_button_state == 1) {
+                this->buttons_state |= 1;
+            }
+            if (mouse_button2_state == 0) {
+                this->buttons_state &= ~2;
+            } else if (mouse_button2_state == 1) {
+                this->buttons_state |= 2;
+            }
+            me.buttons_state = this->buttons_state;
+            me.flags         = MOUSE_EVENT_BUTTON;
+            this->_mouse_signal.emit(me);
+        }
+
+        int has_mouse_position = EM_ASM_INT_V({
+            return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionFlagAddr);
+        });
+        if (has_mouse_position) {
+            MouseEvent me;
+            me.xrel  = EM_ASM_INT_V({
+                return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaXAddr);
+            });;
+            me.yrel  = EM_ASM_INT_V({
+                return workerApi.getInputValue(workerApi.InputBufferAddresses.mouseDeltaYAddr);
+            });;
+            me.xabs  = EM_ASM_INT_V({
+                return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionXAddr);
+            });
+            me.yabs  = EM_ASM_INT_V({
+                return workerApi.getInputValue(workerApi.InputBufferAddresses.mousePositionYAddr);
+            });
+            me.flags = MOUSE_EVENT_MOTION;
+            this->_mouse_signal.emit(me);
+        }
+
+        post_key_event(this->_keyboard_signal);
+
+        EM_ASM({ workerApi.releaseInputLock(); });
     }
-
-    post_key_event(this->_keyboard_signal);
-
-    EM_ASM({ workerApi.releaseInputLock(); });
 
     poll_cdrom_insertion(this->_cdrom_signal);
 
-    // Ensure that period tasks are run (until we have idlewait support).
+    // Ensure that JS-side periodic tasks are run
     EM_ASM({ workerApi.sleep(0); });
 
-    // perform post-processing
+    // Ensure that internal periodic tasks (e.g. including Cuda time updates) are run
     this->_post_signal.emit();
 }
 
