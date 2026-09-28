@@ -100,6 +100,9 @@ int ScsiCdromCmds:: read_toc() {
         return ScsiPhase::STATUS;
     }
 
+    if (!phy_impl->is_device_ready())
+        return ScsiCommonCmds::test_unit_ready();
+
     // SCSI-2 supports only one response format so the format field in CDB (byte 2)
     // is reserved and should be set to zero.
     // ATAPI CD-ROM draft rev 2.6 advises to grab format code from the upper

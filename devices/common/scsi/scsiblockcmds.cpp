@@ -136,6 +136,9 @@ int ScsiBlockCmds::read() {
         return ScsiPhase::STATUS;
     }
 
+    if (!phy_impl->is_device_ready())
+        return ScsiCommonCmds::test_unit_ready();
+
     this->blk_dev->set_fpos(this->get_lba());
     phy_impl->set_xfer_len(this->blk_dev->read_begin(nblocks));
     phy_impl->set_buffer(this->blk_dev->get_cache_ptr());
@@ -194,6 +197,9 @@ void ScsiBlockCmds::eject_medium() {
 }
 
 int ScsiBlockCmds::read_capacity() {
+    if (!phy_impl->is_device_ready())
+        return ScsiCommonCmds::test_unit_ready();
+
     uint32_t lba = this->get_lba();
 
     if ((this->cdb_ptr[1] & 1) && !this->linked_cmds_supported()) {
