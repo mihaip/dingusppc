@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/psx.h>
 #include <devices/common/pci/pcidevice.h>
 #include <devices/common/pci/pcihost.h>
+#include <devices/common/scsi/scsi.h>
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <machines/machine.h>
@@ -79,6 +80,9 @@ public:
 
 int MachineGazelle::initialize(const std::string &id) {
     LOG_F(INFO, "Building machine Gazelle...");
+
+    auto scsi_bus = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiMesh"));
+    scsi_bus->set_default_cdrom(true);
 
     PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("PsxPci1"));
     pci_host->set_irq_map(psx_irq_map);

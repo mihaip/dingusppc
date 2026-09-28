@@ -86,6 +86,9 @@ public:
 int MachinePdm::initialize(const std::string &id) {
     LOG_F(INFO, "Building machine PDM...");
 
+    auto scsi_bus = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
+    scsi_bus->set_default_cdrom(true);
+
     uint16_t machine_id;
 
     // get raw pointer to HMC object
