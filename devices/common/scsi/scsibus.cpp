@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <sstream>
+#include <vector>
 
 ScsiBus::ScsiBus(const std::string name)
 {
@@ -340,28 +341,34 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
     }
 
     image_path = GET_STR_PROP("cdr_img" + bus_suffix);
-    if (!image_path.empty()) {
-        std::istringstream image_stream(image_path);
-        while (std::getline(image_stream, path, ':')) {
-             // do two passes because we start at ID 3.
-            for (scsi_id = 3; scsi_id < SCSI_MAX_DEVS * 2 &&
-                 this->devices[scsi_id % SCSI_MAX_DEVS]; scsi_id++) {}
+    std::vector<std::string> cdrom_paths;
+    std::istringstream image_stream(image_path);
+    while (std::getline(image_stream, path, ':')) {
+        cdrom_paths.push_back(path);
+    }
+    // Keep the built-in drive available for insertion when no media was supplied.
+    if (cdrom_paths.empty() && this->default_cdrom) {
+        cdrom_paths.push_back("");
+    }
+    for (const auto& path : cdrom_paths) {
+        // do two passes because we start at ID 3.
+        for (scsi_id = 3; scsi_id < SCSI_MAX_DEVS * 2 &&
+             this->devices[scsi_id % SCSI_MAX_DEVS]; scsi_id++) {}
 
-            if (scsi_id < SCSI_MAX_DEVS * 2) {
-                scsi_id = scsi_id % SCSI_MAX_DEVS;
-                std::string scsi_device_name = "ScsiCdrom" + bus_suffix + "," +
-                                               std::to_string(scsi_id);
-                ScsiCdrom *scsi_device = new ScsiCdrom(scsi_device_name, scsi_id);
-                gMachineObj->add_device(scsi_device_name,
-                                        std::unique_ptr<ScsiCdrom>(scsi_device));
-                this->register_device(scsi_id, scsi_device);
-                if (!scsi_device->insert_image(path))
-                    ABORT_F("Could not insert CD-ROM image, %s", path.c_str());
-            }
-            else {
-                LOG_F(ERROR, "%s: Too many devices. CD-ROM \"%s\" was not added.",
-                      this->get_name().c_str(), path.c_str());
-            }
+        if (scsi_id < SCSI_MAX_DEVS * 2) {
+            scsi_id = scsi_id % SCSI_MAX_DEVS;
+            std::string scsi_device_name = "ScsiCdrom" + bus_suffix + "," +
+                                           std::to_string(scsi_id);
+            ScsiCdrom *scsi_device = new ScsiCdrom(scsi_device_name, scsi_id);
+            gMachineObj->add_device(scsi_device_name,
+                                    std::unique_ptr<ScsiCdrom>(scsi_device));
+            this->register_device(scsi_id, scsi_device);
+            if (!path.empty() && !scsi_device->insert_image(path))
+                ABORT_F("Could not insert CD-ROM image, %s", path.c_str());
+        }
+        else {
+            LOG_F(ERROR, "%s: Too many devices. CD-ROM \"%s\" was not added.",
+                  this->get_name().c_str(), path.c_str());
         }
     }
 

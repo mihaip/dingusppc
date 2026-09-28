@@ -392,6 +392,12 @@ public:
 
     void attach_scsi_devices(const std::string bus_suffix);
 
+    // Enable on the bus carrying a machine's built-in SCSI CD-ROM so it exists
+    // without a startup image. Leave disabled on other buses and ATAPI machines.
+    void set_default_cdrom(bool present) {
+        this->default_cdrom = present;
+    }
+
     // low-level state management
     void register_device(int id, ScsiPhysDevice* dev_obj);
 
@@ -435,6 +441,8 @@ protected:
 private:
     // SCSI devices registered with this bus
     std::array<ScsiPhysDevice*, SCSI_MAX_DEVS> devices;
+
+    bool default_cdrom = false;
 
     // per-device state of the control lines
     uint16_t    dev_ctrl_lines[SCSI_MAX_DEVS] = {};

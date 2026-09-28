@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/machineid.h>
 #include <devices/common/pci/pcihost.h>
 #include <devices/common/pci/pcidevice.h>
+#include <devices/common/scsi/scsi.h>
 #include <devices/common/scsi/scsihd.h>
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
@@ -65,6 +66,9 @@ public:
 
 int MachineTnt::initialize(const std::string &id) {
     LOG_F(INFO, "Building machine TNT...");
+
+    auto scsi_bus = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
+    scsi_bus->set_default_cdrom(true);
 
     HammerheadCtrl* memctrl_obj;
 
