@@ -114,6 +114,12 @@ void AtapiCdrom::perform_packet_command() {
             break;
         }
 
+        if (!this->medium_present()) {
+            ScsiCommonCmds::test_unit_ready();
+            this->present_status();
+            break;
+        }
+
         if (this->cmd_pkt[1] || (this->cmd_pkt[9] & ~0xf8) || ((this->cmd_pkt[9] & 0xf8) == 0) || this->cmd_pkt[10])
             LOG_F(WARNING, "%s: unsupported READ_CD params: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
                 this->name.c_str(),
