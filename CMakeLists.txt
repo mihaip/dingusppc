@@ -48,9 +48,6 @@ if (EMSCRIPTEN)
     # loguru tries to include excinfo.h, which is not available under Emscripten.
     add_compile_definitions(LOGURU_STACKTRACES=0)
     add_compile_options(-flto)
-    # Work around LLVM #45221 in Emscripten 4.0.22: CLI11 has static
-    # reference temporaries whose destructors need an atexit wrapper.
-    set_source_files_properties(main.cpp PROPERTIES COMPILE_OPTIONS -fno-use-cxa-atexit)
 endif()
 
 option(DPPC_BUILD_PPC_TESTS  "Build PowerPC tests" OFF)
