@@ -128,7 +128,7 @@ static void fpresult_update(double set_result) {
         } else {
             ppc_state.fpscr |= FPCC_ZERO;
         }
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
         if (std::fetestexcept(FE_OVERFLOW)) {
             ppc_state.fpscr |= (OX + FX);
         }
