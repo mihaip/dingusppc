@@ -84,7 +84,7 @@
 	#ifndef LOGURU_STACKTRACES
 		#define LOGURU_STACKTRACES 0
 	#endif
-#elif defined(EMSCRIPTEN)
+#elif defined(__EMSCRIPTEN__)
 	#define LOGURU_PTHREADS    0
 	#define LOGURU_WINTHREADS  0
 #else
