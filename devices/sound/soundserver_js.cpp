@@ -128,7 +128,11 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
 
 int SoundServer::start_out_stream()
 {
-    TimerManager::get_instance()->add_cyclic_timer(impl->poll_timer, MSECS_TO_NSECS(1), impl->poll_cb);
+    // DMA can restart after a STOP command without closing the output stream;
+    // the timer may already be running.
+    if (!impl->poll_timer.active) {
+        TimerManager::get_instance()->add_cyclic_timer(impl->poll_timer, MSECS_TO_NSECS(1), impl->poll_cb);
+    }
     impl->status = SND_SERVER_STREAM_STARTED;
 
     return 0;
@@ -138,7 +142,6 @@ void SoundServer::close_out_stream()
 {
     if (impl->status == SND_SERVER_STREAM_STARTED && impl->poll_timer.active) {
         TimerManager::get_instance()->cancel_timer(impl->poll_timer);
-        impl->poll_timer.active = 0;
     }
     impl->status = SND_SERVER_STARTED;
 
