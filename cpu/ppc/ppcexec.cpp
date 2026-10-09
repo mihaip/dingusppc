@@ -39,6 +39,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <ctime>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 using namespace std;
 using namespace dppc_interpreter;
 
@@ -345,6 +349,10 @@ void ppc_main_opcode(PPCOpcode *opcodeGrabber, uint32_t opcode)
 static long long cpu_now_ns() {
 #ifdef __APPLE__
     return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+#elif defined(__EMSCRIPTEN__)
+    // This is a direct JS performance.now() import; avoid the timespec and
+    // WASI timestamp conversions used by std::chrono::steady_clock.
+    return emscripten_get_now() * NS_PER_MSEC;
 #else
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::high_resolution_clock::now().time_since_epoch()).count();
